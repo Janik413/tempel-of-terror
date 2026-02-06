@@ -1,0 +1,30 @@
+{
+  "name": "temple-of-horror-server",
+  "version": "1.0.0",
+  "description": "Temple of Horror - Multiplayer Board Game Server",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "nodemon index.js",
+    "build": "cd ../client && npm run build",
+    "heroku-postbuild": "npm run build"
+  },
+  "keywords": [
+    "game",
+    "multiplayer",
+    "board-game"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.18.2",
+    "socket.io": "^4.6.1",
+    "cors": "^2.8.5"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  }
+}
