@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import GameOver from './GameOver';
+import RoundTransition from './RoundTransition';
 
 function Game({ room, socket, playerRole, playerChambers, onLeave }) {
   const [gameState, setGameState] = useState(room?.gameState || {});
@@ -8,6 +9,8 @@ function Game({ room, socket, playerRole, playerChambers, onLeave }) {
   const [selectedPlayer, setSelectedPlayer] = useState(null);
   const [selectedChamber, setSelectedChamber] = useState(null);
   const [allPlayers, setAllPlayers] = useState(room?.players || []);
+  const [showRoundTransition, setShowRoundTransition] = useState(false);
+  const [roundTransitionData, setRoundTransitionData] = useState(null);
 
   // Sync allPlayers with room data when it updates
   useEffect(() => {
@@ -72,8 +75,16 @@ function Game({ room, socket, playerRole, playerChambers, onLeave }) {
     // Next round
     socket.on('nextRound', (data) => {
       setGameState(data.gameState);
-      setMessage(`Round ${data.round + 1} begins! ${data.keyHolder} holds the key.`);
-      setTimeout(() => setMessage(''), 4000);
+      
+      // Show round transition modal
+      setRoundTransitionData({
+        round: data.round,
+        keyHolderName: data.keyHolder,
+        gameState: data.gameState
+      });
+      setShowRoundTransition(true);
+      
+      // Don't show message banner, the modal handles it
       
       // Request updated room state to get new chambers
       socket.emit('getRoomState', (response) => {
@@ -145,6 +156,16 @@ function Game({ room, socket, playerRole, playerChambers, onLeave }) {
   return (
     <div className="game-screen">
       <div className="temple-bg"></div>
+
+      {/* Round Transition Modal */}
+      {showRoundTransition && roundTransitionData && (
+        <RoundTransition
+          round={roundTransitionData.round}
+          keyHolderName={roundTransitionData.keyHolderName}
+          gameState={roundTransitionData.gameState}
+          onComplete={() => setShowRoundTransition(false)}
+        />
+      )}
 
       {/* Role reveal modal */}
       {showRoleModal && (
