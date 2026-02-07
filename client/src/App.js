@@ -5,7 +5,8 @@ import Game from './components/Game';
 import './styles/App.css';
 
 // Connect to server
-const socket = io(process.env.REACT_APP_SERVER_URL || 'http://localhost:3001');
+// In production, connect to the same host (Render), in development use localhost
+const socket = io(process.env.REACT_APP_SERVER_URL || (window.location.hostname === 'localhost' ? 'http://localhost:3001' : window.location.origin));
 
 function App() {
   const [screen, setScreen] = useState('home'); // home, lobby, game
