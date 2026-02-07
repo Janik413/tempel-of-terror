@@ -102,14 +102,8 @@ function App() {
   };
 
   const leaveRoom = () => {
-    socket.disconnect();
-    socket.connect();
-    setScreen('home');
-    setRoom(null);
-    setRoomCode('');
-    setPlayerRole(null);
-    setPlayerChambers([]);
-    setTargetPlayerCount(5);
+    // Simply reload the page to fully reset everything
+    window.location.reload();
   };
 
   return (
