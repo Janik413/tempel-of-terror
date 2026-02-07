@@ -380,6 +380,10 @@ io.on('connection', (socket) => {
         gameState.chambersOpenedThisRound = 0;
         gameState.chambersToOpenThisRound = room.players.length;
         
+        // Transfer key to the player whose chamber was just opened (for the new round)
+        const targetPlayerIndex = room.players.findIndex(p => p.id === targetPlayerId);
+        gameState.keyHolderIndex = targetPlayerIndex;
+        
         // Redistribute chambers
         distributeChambers(room, gameState.round);
         
@@ -390,7 +394,7 @@ io.on('connection', (socket) => {
           });
         });
         
-        // Key holder stays the same for new round
+        // Key holder is the player whose chamber was opened
         io.to(socket.roomCode).emit('nextRound', {
           round: gameState.round,
           keyHolder: room.players[gameState.keyHolderIndex].name,
