@@ -1,107 +1,71 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
+import ThemePicker from './ThemePicker';
 
-function GameOver({ socket, allPlayers, gameState, onLeave }) {
-  const [gameOverData, setGameOverData] = useState(null);
-  const [isHost, setIsHost] = useState(false);
+// Result screen: winner, reason and all roles. The host can change the theme and start a rematch.
+function GameOver({ state, theme, message, onRestart, onThemeChange, onOpenProfile, onLeave }) {
+  const { game, players, me } = state;
+  const isHost = me.id === state.hostId;
+  const isAdventurerWin = game.winner === 'adventurers';
+  const adventurers = players.filter(player => player.role === 'adventurer');
+  const hexen = players.filter(player => player.role === 'hexe');
+  const myTeam = me.role === 'adventurer' ? 'adventurers' : 'hexen';
+  const connectedCount = players.filter(player => player.connected).length;
 
-  useEffect(() => {
-    socket.on('gameOver', (data) => {
-      console.log('Game Over Data Received:', data);
-      setGameOverData(data);
-    });
-
-    // Check if current player is host
-    socket.emit('getRoomState', (response) => {
-      if (response.success && response.room) {
-        setIsHost(response.room.host === socket.id);
-      }
-    });
-
-    // If gameState already has winner, use that with allPlayers
-    if (gameState?.winner) {
-      console.log('Using gameState winner, allPlayers:', allPlayers);
-      
-      setGameOverData({
-        winner: gameState.winner,
-        reason: gameState.reason || 'Game Over',
-        players: allPlayers || []
-      });
-    }
-
-    return () => {
-      socket.off('gameOver');
-    };
-  }, [socket, gameState, allPlayers]);
-
-  const handlePlayAgain = () => {
-    socket.emit('restartGame', (response) => {
-      if (!response.success) {
-        alert(response.error || 'Could not restart game');
-      }
-      // If successful, gameRestarted event will be handled in Game.js
-    });
-  };
-
-  if (!gameOverData) {
-    return <div className="loading">Loading results...</div>;
-  }
-
-  console.log('Rendering GameOver with data:', gameOverData);
-  
-  const isAdventurerWin = gameOverData.winner === 'adventurers';
-  const adventurers = gameOverData.players?.filter(p => p.role === 'adventurer') || [];
-  const hexen = gameOverData.players?.filter(p => p.role === 'hexe') || [];
-
-  console.log('Adventurers:', adventurers);
-  console.log('Hexen:', hexen);
+  const renderRoleList = (list, roleId) =>
+    list.length > 0 ? (
+      list.map(player => {
+        // Players with an account can be clicked to open their statistics
+        const canOpenProfile = Boolean(onOpenProfile && player.accountId);
+        return (
+          <div
+            key={player.id}
+            className={`role-item ${roleId} ${canOpenProfile ? 'has-profile' : ''}`}
+            onClick={canOpenProfile ? () => onOpenProfile(player.accountId) : undefined}
+            title={canOpenProfile ? 'Show stats' : 'Guest'}
+          >
+            {player.name}
+            {player.id === me.id && ' (You)'}
+            {canOpenProfile ? ' 📊' : ''}
+          </div>
+        );
+      })
+    ) : (
+      <div className="no-players">Nobody</div>
+    );
 
   return (
     <div className="game-over-screen">
       <div className="temple-bg"></div>
       <div className="game-over-content">
-        <div className={`victory-banner ${gameOverData.winner}`}>
-          <div className="victory-icon">
-            {isAdventurerWin ? '⚔️' : '🧙‍♀️'}
-          </div>
+        <div className={`victory-banner ${game.winner}`}>
+          <div className="victory-icon">{isAdventurerWin ? theme.roles.adventurer.icon : theme.roles.hexe.icon}</div>
           <h1 className="victory-title">
-            {isAdventurerWin ? 'Adventurers Win!' : 'Hexen Win!'}
+            {isAdventurerWin ? theme.roles.adventurer.plural : theme.roles.hexe.plural} Win!
           </h1>
-          <p className="victory-reason">{gameOverData.reason}</p>
+          <p className="victory-reason">{theme.reasons[game.reason]}</p>
+          <p className="victory-personal">{myTeam === game.winner ? '🎉 Your team won!' : '😢 Your team lost.'}</p>
         </div>
 
         <div className="final-roles">
           <h2>🎭 All Roles Revealed</h2>
-          <p className="roles-subtitle">Everyone's secret identity is now shown!</p>
-          
+          <p className="roles-subtitle">
+            Everyone's secret identity is now shown!
+            {state.accountsEnabled && ' Results of logged in players (📊) were saved to their stats.'}
+          </p>
+
           <div className="role-columns">
             <div className="role-column adventurers">
-              <h3>⚔️ Adventurers ({adventurers.length})</h3>
-              <div className="role-list">
-                {adventurers.length > 0 ? (
-                  adventurers.map(p => (
-                    <div key={p.id || p.name} className="role-item adventurer">
-                      {p.name}
-                    </div>
-                  ))
-                ) : (
-                  <div className="no-players">No adventurers</div>
-                )}
-              </div>
+              <h3>
+                {theme.roles.adventurer.icon} {theme.roles.adventurer.plural} ({adventurers.length})
+              </h3>
+              <div className="role-list">{renderRoleList(adventurers, 'adventurer')}</div>
             </div>
 
             <div className="role-column hexen">
-              <h3>🧙‍♀️ Hexen ({hexen.length})</h3>
-              <div className="role-list">
-                {hexen.length > 0 ? (
-                  hexen.map(p => (
-                    <div key={p.id || p.name} className="role-item guardian">
-                      {p.name}
-                    </div>
-                  ))
-                ) : (
-                  <div className="no-players">No hexen</div>
-                )}
-              </div>
+              <h3>
+                {theme.roles.hexe.icon} {theme.roles.hexe.plural} ({hexen.length})
+              </h3>
+              <div className="role-list">{renderRoleList(hexen, 'hexe')}</div>
             </div>
           </div>
         </div>
@@ -109,23 +73,23 @@ function GameOver({ socket, allPlayers, gameState, onLeave }) {
         <div className="game-over-actions">
           {isHost ? (
             <>
-              <button onClick={handlePlayAgain} className="btn btn-large btn-primary">
+              <ThemePicker value={state.theme} onChange={onThemeChange} />
+              <button
+                onClick={onRestart}
+                className="btn btn-large btn-primary"
+                disabled={connectedCount < 3}
+              >
                 🔄 Play Again (Same Room)
               </button>
-              <button onClick={onLeave} className="btn btn-large btn-secondary">
-                Leave Room
-              </button>
+              {connectedCount < 3 && <div className="error-message">Need at least 3 connected players</div>}
             </>
           ) : (
-            <>
-              <div className="waiting-for-host">
-                Waiting for host to start new game or leave...
-              </div>
-              <button onClick={onLeave} className="btn btn-large btn-secondary">
-                Leave Room
-              </button>
-            </>
+            <div className="waiting-for-host">Waiting for host to start a new game...</div>
           )}
+          <button onClick={onLeave} className="btn btn-large btn-secondary">
+            Leave Room
+          </button>
+          {message && <div className="error-message">{message}</div>}
         </div>
       </div>
     </div>

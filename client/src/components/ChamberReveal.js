@@ -1,64 +1,44 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 
-function ChamberReveal({ playerName, chamberType, onComplete }) {
+const VISIBLE_MS = 3000;
+const FADE_MS = 300;
+
+// Full screen animation that shows the content of the chamber that was just opened
+function ChamberReveal({ playerName, chamberType, theme, onComplete }) {
   const [isVisible, setIsVisible] = useState(true);
 
+  // Keep the latest callback in a ref so re-renders of the parent do not restart the timer
+  const onCompleteRef = useRef(onComplete);
+  onCompleteRef.current = onComplete;
+
   useEffect(() => {
-    // Auto-close after 3 seconds
+    let fadeTimer;
     const closeTimer = setTimeout(() => {
       setIsVisible(false);
-      setTimeout(() => {
-        onComplete();
-      }, 300); // Wait for fade out animation
-    }, 3000);
+      fadeTimer = setTimeout(() => onCompleteRef.current(), FADE_MS);
+    }, VISIBLE_MS);
 
     return () => {
       clearTimeout(closeTimer);
+      clearTimeout(fadeTimer);
     };
-  }, [onComplete]);
+  }, []);
 
-  const chamberInfo = {
-    gold: { icon: '💰', name: 'Gold!', color: 'gold' },
-    empty: { icon: '📭', name: 'Empty Room', color: 'empty' },
-    trap: { icon: '🔥', name: 'Fire Trap!', color: 'trap' }
+  const chamber = theme.chambers[chamberType];
+  const subtitles = {
+    gold: `${theme.roles.adventurer.icon} Good for the ${theme.roles.adventurer.plural}!`,
+    trap: `${theme.roles.hexe.icon} Good for the ${theme.roles.hexe.plural}!`,
+    empty: theme.emptySubtitle
   };
-
-  const info = chamberInfo[chamberType];
 
   return (
     <div className={`chamber-reveal-overlay ${isVisible ? 'visible' : 'hidden'}`}>
       <div className={`chamber-reveal-modal ${isVisible ? 'visible' : 'hidden'}`}>
         <h2 className="chamber-reveal-title">Chamber Revealed!</h2>
-        
-        <div className="chamber-reveal-player">
-          {playerName}'s Chamber
-        </div>
-
-        <div className={`chamber-reveal-icon ${info.color}`}>
-          {info.icon}
-        </div>
-
-        <div className={`chamber-reveal-name ${info.color}`}>
-          {info.name}
-        </div>
-
-        {chamberType === 'gold' && (
-          <div className="chamber-reveal-subtitle">
-            ⚔️ Good for Adventurers!
-          </div>
-        )}
-
-        {chamberType === 'trap' && (
-          <div className="chamber-reveal-subtitle">
-            🧙‍♀️ Good for Hexen!
-          </div>
-        )}
-
-        {chamberType === 'empty' && (
-          <div className="chamber-reveal-subtitle">
-            Time wasted...
-          </div>
-        )}
+        <div className="chamber-reveal-player">{playerName}'s Chamber</div>
+        <div className={`chamber-reveal-icon ${chamberType}`}>{chamber.icon}</div>
+        <div className={`chamber-reveal-name ${chamberType}`}>{chamber.revealName}</div>
+        <div className="chamber-reveal-subtitle">{subtitles[chamberType]}</div>
       </div>
     </div>
   );

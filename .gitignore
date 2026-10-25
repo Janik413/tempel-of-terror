@@ -25,3 +25,7 @@ yarn-error.log*
 .idea/
 *.swp
 *.swo
+
+# Secrets
+.env
+server/.env

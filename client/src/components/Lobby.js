@@ -1,48 +1,31 @@
 import React from 'react';
+import ThemePicker from './ThemePicker';
+import { getRoleRange, formatRange, CHAMBER_CARDS } from '../themes';
 
-// Helper function for guardian count
-function getHexeCount(playerCount) {
-  const guardianMap = {
-    3: 2, 4: 2, 5: 2, 6: 2, 7: 3, 8: 3, 9: 3, 10: 4
-  };
-  return guardianMap[playerCount] || 2;
-}
-
-// Helper function for chamber distribution
-function getChamberDistribution(playerCount) {
-  const distributions = {
-    3: { gold: 5, empty: 8, traps: 2 },
-    4: { gold: 6, empty: 12, traps: 2 },
-    5: { gold: 7, empty: 16, traps: 2 },
-    6: { gold: 8, empty: 20, traps: 2 },
-    7: { gold: 7, empty: 26, traps: 2 },
-    8: { gold: 8, empty: 30, traps: 2 },
-    9: { gold: 9, empty: 34, traps: 2 },
-    10: { gold: 10, empty: 37, traps: 3 }
-  };
-  return distributions[playerCount] || { gold: 7, empty: 16, traps: 2 };
-}
-
-function Lobby({ room, socket, onStartGame, onLeave, error }) {
-  const isHost = room && socket.id === room.host;
-  const currentCount = room?.players.length || 0;
-  const targetCount = room?.targetPlayerCount;
-  const canStart = currentCount >= 3 && currentCount <= 10;
+function Lobby({ state, theme, onStartGame, onThemeChange, onLeave, error }) {
+  const isHost = state.me.id === state.hostId;
+  const currentCount = state.players.length;
+  const targetCount = state.targetPlayerCount;
+  const allConnected = state.players.every(player => player.connected);
+  const canStart = currentCount >= 3 && currentCount <= 10 && allConnected;
   const atTarget = targetCount && currentCount === targetCount;
-  
-  const distribution = getChamberDistribution(currentCount);
-  const adventurerCount = currentCount - getHexeCount(currentCount);
-  const guardianCount = getHexeCount(currentCount);
+
+  // Setup preview is based on the current player count (minimum 3 for the preview)
+  const previewCount = Math.max(3, currentCount);
+  const distribution = CHAMBER_CARDS[previewCount];
+  const roleRange = getRoleRange(previewCount);
 
   return (
     <div className="lobby-screen">
       <div className="temple-bg"></div>
       <div className="lobby-content">
         <div className="lobby-header">
-          <h1>🏛️ Temple of Horror</h1>
+          <h1>
+            {theme.titleIcon} {theme.title}
+          </h1>
           <div className="room-code-display">
             <span className="label">Room Code:</span>
-            <span className="code">{room?.code}</span>
+            <span className="code">{state.code}</span>
           </div>
         </div>
 
@@ -53,29 +36,30 @@ function Lobby({ room, socket, onStartGame, onLeave, error }) {
               {targetCount && ` - Target: ${targetCount}`}
             </h2>
             <div className="player-list">
-              {room?.players.map((player) => (
-                <div key={player.id} className="player-item">
+              {state.players.map(player => (
+                <div key={player.id} className={`player-item ${player.connected ? '' : 'offline'}`}>
                   <span className="player-name">
                     {player.name}
-                    {player.id === room.host && ' 👑'}
+                    {player.id === state.hostId && ' 👑'}
+                    {player.id === state.me.id && ' (You)'}
+                    {state.accountsEnabled && !player.accountId && <span className="guest-tag"> guest</span>}
+                    {!player.connected && ' – offline'}
                   </span>
                 </div>
               ))}
             </div>
 
             <div className="player-count-notice">
-              {currentCount < 3 && (
-                <p className="warning">⚠️ Need at least 3 players to start</p>
+              {currentCount < 3 && <p className="warning">⚠️ Need at least 3 players to start</p>}
+              {currentCount >= 3 && !allConnected && (
+                <p className="warning">⚠️ Waiting for offline players to reconnect...</p>
               )}
-              {currentCount >= 3 && !atTarget && targetCount && (
+              {currentCount >= 3 && allConnected && targetCount && !atTarget && currentCount < targetCount && (
                 <p className="info">
                   Waiting for {targetCount - currentCount} more player{targetCount - currentCount !== 1 ? 's' : ''}...
                 </p>
               )}
-              {currentCount >= 3 && atTarget && (
-                <p className="success">✅ Target reached! Ready to start!</p>
-              )}
-              {currentCount >= 3 && !targetCount && (
+              {currentCount >= 3 && allConnected && (atTarget || !targetCount || currentCount > targetCount) && (
                 <p className="success">✅ Ready to start!</p>
               )}
             </div>
@@ -83,39 +67,43 @@ function Lobby({ room, socket, onStartGame, onLeave, error }) {
 
           <div className="game-setup-info">
             <h3>Game Setup</h3>
+
+            {isHost ? (
+              <ThemePicker value={state.theme} onChange={onThemeChange} />
+            ) : (
+              <p className="theme-current">
+                Theme: {theme.pickerIcon} <strong>{theme.label}</strong> (chosen by host)
+              </p>
+            )}
+
             <div className="info-grid">
               <div className="info-item">
                 <span className="info-label">Current Players</span>
                 <span className="info-value">{currentCount}</span>
               </div>
               <div className="info-item adventurer-color">
-                <span className="info-label">Adventurers</span>
-                <span className="info-value">{adventurerCount}</span>
+                <span className="info-label">{theme.roles.adventurer.plural}</span>
+                <span className="info-value">{formatRange(roleRange.adventurers)}</span>
               </div>
-              <div className="info-item guardian-color">
-                <span className="info-label">Hexen</span>
-                <span className="info-value">{guardianCount}</span>
+              <div className="info-item hexe-color">
+                <span className="info-label">{theme.roles.hexe.plural}</span>
+                <span className="info-value">{formatRange(roleRange.hexen)}</span>
               </div>
             </div>
+            {roleRange.hexen.min !== roleRange.hexen.max && (
+              <p className="role-hint">One role card stays hidden, so nobody knows the exact number.</p>
+            )}
 
             <div className="chamber-distribution">
-              <h4>Treasure Chambers</h4>
+              <h4>Chambers</h4>
               <div className="chamber-stats">
-                <div className="chamber-stat gold">
-                  <span className="icon">💰</span>
-                  <span className="count">{distribution.gold}</span>
-                  <span className="type">Gold</span>
-                </div>
-                <div className="chamber-stat empty">
-                  <span className="icon">📭</span>
-                  <span className="count">{distribution.empty}</span>
-                  <span className="type">Empty</span>
-                </div>
-                <div className="chamber-stat trap">
-                  <span className="icon">🔥</span>
-                  <span className="count">{distribution.traps}</span>
-                  <span className="type">Traps</span>
-                </div>
+                {['gold', 'empty', 'trap'].map(type => (
+                  <div key={type} className={`chamber-stat ${type}`}>
+                    <span className="icon">{theme.chambers[type].icon}</span>
+                    <span className="count">{distribution[type]}</span>
+                    <span className="type">{theme.chambers[type].name}</span>
+                  </div>
+                ))}
               </div>
             </div>
 
@@ -123,17 +111,22 @@ function Lobby({ room, socket, onStartGame, onLeave, error }) {
               <h4>Quick Rules</h4>
               <ul>
                 <li>🎭 Secret roles assigned randomly</li>
-                <li>🗝️ Key holder opens a chamber each turn</li>
-                <li>💰 Adventurers win if all gold is found</li>
-                <li>🔥 Hexen win if all traps trigger</li>
-                <li>⏰ Hexen win after 4 rounds if gold not found</li>
+                <li>🗝️ Key holder opens a chamber of another player</li>
+                <li>
+                  {theme.chambers.gold.icon} {theme.roles.adventurer.plural} win if everything{' '}
+                  {theme.chambers.gold.icon} is found
+                </li>
+                <li>
+                  {theme.chambers.trap.icon} {theme.roles.hexe.plural} win if all traps trigger
+                </li>
+                <li>⏰ {theme.roles.hexe.plural} win after 4 rounds otherwise</li>
               </ul>
             </div>
           </div>
         </div>
 
         <div className="lobby-actions">
-          {isHost && (
+          {isHost ? (
             <button
               onClick={onStartGame}
               disabled={!canStart}
@@ -141,12 +134,8 @@ function Lobby({ room, socket, onStartGame, onLeave, error }) {
             >
               {canStart ? 'Start Game' : 'Waiting for Players...'}
             </button>
-          )}
-
-          {!isHost && (
-            <div className="waiting-message">
-              Waiting for host to start the game...
-            </div>
+          ) : (
+            <div className="waiting-message">Waiting for host to start the game...</div>
           )}
 
           <button onClick={onLeave} className="btn btn-secondary">

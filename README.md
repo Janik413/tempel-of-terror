@@ -1,234 +1,133 @@
-# 🏛️ Temple of Horror - CORRECT RULES VERSION
+# 🎃 Temple of Horror / 🎄 Temple of Frost
 
-A fully functional online multiplayer implementation of **Temple of Horror (Tempel des Schreckens)** with the correct official game rules!
+Online multiplayer version of **Tempel des Schreckens** for 3–10 players, with two selectable themes.
 
-## 🎮 Game Overview
+## Themes
 
-In Temple of Horror, players explore a mysterious temple searching for gold treasures. But beware - some players are secret **Guardians** trying to protect the temple by leading others into fire traps!
+The host picks the theme when creating the room and can change it in the lobby or on the end screen.
+All players always see the host's theme. Only texts, icons and colors change – the rules are identical.
 
-### Key Features
+| | 🎃 Halloween | 🎄 Christmas |
+|---|---|---|
+| Title | Temple of Horror | Temple of Frost |
+| Good team | ⚔️ Adventurers | 🧝 Elves |
+| Bad team | 🧙‍♀️ Hexen | ❄️ Frost Witches |
+| Treasure | 💰 Gold | 🎁 Present |
+| Empty | 🕸️ Empty | 🧦 Empty Stocking |
+| Trap | 🔥 Fire Trap | 🧊 Ice Trap |
+| Decoration | drifting bats & ghosts | falling snow |
 
-✅ **3-10 Players** - Flexible player count with dynamic role distribution
-✅ **Hidden Roles** - Adventurers vs Guardians
-✅ **Chamber Cards** - Each player has secret chambers containing Gold, Empty rooms, or Fire Traps
-✅ **Key Holder Mechanic** - One player chooses which chamber to open each turn
-✅ **Progress Tracker** - See exactly how many treasures/traps/empty rooms have been found
-✅ **4 Rounds** - Decreasing cards each round (5→4→3→2)
-✅ **Multiple Win Conditions** - Find all gold, trigger all traps, or survive 4 rounds
+New themes can be added in `client/src/themes.js` (texts/icons) and `client/src/styles/App.css`
+(`:root[data-theme="..."]` color block) plus the id in `THEMES` in `server/index.js`.
 
-## 🎯 How to Play
+## Rules
 
-### Setup
+1. **Roles:** Role cards are shuffled and one per player is dealt. For most player counts there is one card more
+   than players – it stays hidden, so nobody knows the exact number of Hexen.
+2. **Chambers:** Every player gets 5 face-down chamber cards and knows only their own.
+3. **Turn:** The key holder opens one chamber of **another** player. That player gets the key.
+4. **Round end:** After as many openings as there are players, all unopened cards are shuffled and
+   dealt again with one card less (5 → 4 → 3 → 2). The last opened player keeps the key.
+5. **Win:**
+   - Adventurers: all treasure found
+   - Hexen: all traps triggered, or 4 rounds over
 
-1. **Roles are Assigned:**
-   - Each player gets a secret role (Adventurer or Guardian)
-   - Number of Guardians varies by player count (see table below)
+| Players | Role cards (Adv./Hexen) | Possible Hexen | Treasure | Empty | Traps |
+|---------|------------------------|----------------|----------|-------|-------|
+| 3  | 2 / 2 | 1–2 | 5  | 8  | 2 |
+| 4  | 3 / 2 | 1–2 | 6  | 12 | 2 |
+| 5  | 3 / 2 | 1–2 | 7  | 16 | 2 |
+| 6  | 4 / 2 | 1–2 | 8  | 20 | 2 |
+| 7  | 5 / 3 | 2–3 | 7  | 26 | 2 |
+| 8  | 6 / 3 | 2–3 | 8  | 30 | 2 |
+| 9  | 6 / 3 | 3   | 9  | 34 | 2 |
+| 10 | 7 / 4 | 3–4 | 10 | 37 | 3 |
 
-2. **Chamber Cards Distributed:**
-   - Each player receives 5 face-down chamber cards
-   - Chambers contain: Gold 💰, Empty rooms 📭, or Fire Traps 🔥
-   - Players know what's in their own chambers (secret!)
+## Features
 
-3. **First Key Holder Chosen:**
-   - One player starts with the key 🗝️
+- Server is the single source of truth: each player only receives their own role and own chamber contents
+  (no cheating via browser dev tools)
+- **Reconnect:** page reload or network loss keeps your seat (session token in the browser)
+- If the key holder is offline, the host can open a chamber for them so the game never gets stuck
+- Lobby players who disconnect are removed after 30 s, empty rooms are deleted after 15 min
+- Live door markers: everybody sees which door each player is hovering (tap on phones), the key holder's door glows
+- Reveal and round transition animations, progress tracker, rematch in the same room
+- Responsive layout for phones
 
-### Gameplay
+## Accounts & Statistics (optional)
 
-**Each Turn:**
+Players can create an account (Supabase) to track their results. Guests can always play along, they just get no stats.
 
-1. **Key Holder** chooses ANY player (including themselves)
-2. **Key Holder** selects which chamber to open
-3. **Chamber is revealed** to all players
-4. **The player whose chamber was opened** becomes the next Key Holder
+**Tracked per game:** role, win/loss, chambers opened as key holder (treasure / empty / trap),
+how often others opened your chambers. **Shown on the profile:** games, wins, win rate, win rate per role,
+current and best streak, hit rate as key holder, fastest win, favorite theme, recent games, leaderboard.
 
-**Discussion & Bluffing:**
-- Players can (and should!) lie about what's in their chambers
-- Adventurers want gold to be found
-- Guardians want to waste time or trigger traps
-- Trust no one! 🎭
+**Setup**
 
-**Round Ends:**
-- After opening [player count] chambers, the round ends
-- Unrevealed chambers are collected, shuffled, and redistributed
-- Each player gets 1 fewer card (Round 1=5, R2=4, R3=3, R4=2)
+1. Run `server/supabase/schema.sql` once in Supabase (SQL Editor).
+2. Client: Supabase URL and publishable key are in `client/src/config.js` (public, safe to commit).
+3. Server: set the **secret** key as environment variables – never commit it:
+   - locally in `server/.env` (git-ignored):
+     ```
+     SUPABASE_URL=https://fhewqgwcipvgtdlgquuz.supabase.co
+     SUPABASE_SECRET_KEY=sb_secret_...
+     ```
+   - on Render: *Environment* → add `SUPABASE_URL` and `SUPABASE_SECRET_KEY`
 
-### Win Conditions
+Without the server variables the game runs in guest-only mode (log line: `Accounts disabled`).
+Results are only written by the server, so nobody can fake their stats from the browser.
 
-**⚔️ Adventurers Win:**
-- All gold is found before the game ends
+## Quick Start
 
-**🛡️ Guardians Win:**
-- All fire traps are triggered, OR
-- 4 rounds complete without all gold being found
+```bash
+# install
+cd server && npm install
+cd ../client && npm install
 
-## 📊 Player & Card Distribution
+# terminal 1
+cd server && npm start      # http://localhost:3001
 
-| Players | Adventurers | Guardians | 💰 Gold | 📭 Empty | 🔥 Traps |
-|---------|-------------|-----------|---------|----------|----------|
-| 3       | 2           | 2         | 5       | 8        | 2        |
-| 4       | 3           | 2         | 6       | 12       | 2        |
-| 5       | 3           | 2         | 7       | 16       | 2        |
-| 6       | 4           | 2         | 8       | 20       | 2        |
-| 7       | 5           | 3         | 7       | 26       | 2        |
-| 8       | 6           | 3         | 8       | 30       | 2        |
-| 9       | 6           | 3         | 9       | 34       | 2        |
-| 10      | 7           | 4         | 10      | 37       | 3        |
-
-## 🚀 Quick Start
-
-### Local Development
-
-1. **Install dependencies:**
-   ```bash
-   # Server
-   cd server
-   npm install
-   
-   # Client (in new terminal)
-   cd client
-   npm install
-   ```
-
-2. **Start the game:**
-   ```bash
-   # Terminal 1 - Server
-   cd server
-   npm start
-   
-   # Terminal 2 - Client
-   cd client
-   npm start
-   ```
-
-3. **Play:**
-   - Browser opens automatically at `http://localhost:3000`
-   - Create a room and select how many players you want
-   - Share the room code with friends
-   - Start playing when everyone joins!
-
-### Deploy Online (Free)
-
-**Render (Recommended):**
-
-1. Push code to GitHub
-2. Go to https://render.com
-3. Create New Web Service
-4. Build: `cd server && npm install && cd ../client && npm install && npm run build`
-5. Start: `cd server && npm start`
-6. Add env: `NODE_ENV=production`
-7. Deploy!
-
-See `DEPLOYMENT.md` for detailed instructions.
-
-## 🎨 New Features
-
-### Player Count Selection
-- Choose target player count (3-10) when creating a room
-- See role distribution before starting
-- See how many chambers of each type will be in the game
-
-### Progress Tracker
-Real-time progress bars showing:
-- 💰 Gold found vs total
-- 📭 Empty rooms found vs total
-- 🔥 Fire traps found vs total
-- Current round (1-4)
-
-### Chamber Interface
-- Clear visualization of locked/revealed chambers
-- Key holder selects player and chamber
-- Other players see their own secret chambers while waiting
-
-## 🎯 Strategy Tips
-
-**For Adventurers:**
-- Be honest about gold locations (usually)
-- Watch who opens suspicious chambers
-- Keep track of revealed information
-- Trust players who've shown gold
-
-**For Guardians:**
-- Lie about what's in your chambers
-- Lead players to empty rooms or traps
-- Create confusion and distrust
-- Waste time to reach round 4
-
-**For Everyone:**
-- The key holder chooses - discuss loudly!
-- Remember what chambers have been revealed
-- Pay attention to who becomes key holder
-- Use voice chat for maximum chaos! 🎙️
-
-## 📁 Project Structure
-
-```
-temple-of-horror-correct/
-├── server/
-│   ├── index.js          # Game server with chamber mechanics
-│   └── package.json
-├── client/
-│   ├── src/
-│   │   ├── components/
-│   │   │   ├── Lobby.js        # Pre-game with player count selection
-│   │   │   ├── Game.js         # Main game with chamber selection
-│   │   │   └── GameOver.js     # Results screen
-│   │   ├── styles/
-│   │   │   └── App.css         # Complete styling
-│   │   ├── App.js              # Main app component
-│   │   └── index.js
-│   ├── public/
-│   │   └── index.html
-│   └── package.json
-├── README.md
-└── package.json
+# terminal 2
+cd client && npm start      # http://localhost:3000
 ```
 
-## 🔧 Technical Details
+To test with several players locally, open additional **private windows** (each browser profile keeps one session).
 
-- **Frontend:** React 18
-- **Backend:** Node.js + Express
-- **Real-time:** Socket.io
-- **Styling:** Custom CSS (no frameworks)
-- **Players:** 3-10
-- **Rounds:** 4 (with decreasing cards)
+## Deploy (e.g. Render)
 
-## 🐛 Troubleshooting
+- Build: `cd server && npm install && cd ../client && npm install && npm run build`
+- Start: `cd server && npm start`
+- Env: `NODE_ENV=production`
 
-**Can't connect:**
-- Make sure both server and client are running
-- Check ports 3000 and 3001 are available
+In production the server also serves the React build, so only one service is needed.
 
-**Players can't join:**
-- Verify room code is correct (case-sensitive)
-- Make sure game hasn't started yet
-- Check there are fewer than 10 players
+## Project Structure
 
-**Game won't start:**
-- Need at least 3 players
-- Only host (👑) can start
+```
+server/index.js                  game server (rules, rooms, snapshots, reconnect)
+server/accounts.js               Supabase: token check, saving results
+server/supabase/schema.sql       database tables, statistics view, security rules
+client/src/App.js                connection, session handling, home screen
+client/src/themes.js             theme texts/icons + role/chamber tables
+client/src/config.js             public Supabase URL / publishable key
+client/src/auth/                 login hook, Supabase client, statistics calculation
+client/src/components/
+  Lobby.js                       waiting room, theme selection (host)
+  Game.js                        board, key holder actions, animations
+  GameOver.js                    result, roles, rematch
+  ChamberReveal.js               reveal animation
+  RoundTransition.js             round animation
+  ThemePicker.js                 theme toggle
+  ThemeDecorations.js            snow / bats background
+  AuthPanel.js                   login / registration
+  ProfileModal.js                statistics + leaderboard
+client/src/styles/App.css        styles, theme colors as CSS variables
+```
 
-## 🎉 What's Different from the Original Version?
+## Technical Details
 
-The first version I created was based on "The Resistance/Avalon" mechanics (teams, voting, expeditions). This version has the **correct Temple of Horror rules**:
+React 18 · Node.js 20+ + Express · Socket.io · Supabase (auth + Postgres) · plain CSS
 
-**OLD (Wrong):**
-- ❌ Team-based expeditions
-- ❌ Vote on team proposals
-- ❌ Play success/sabotage cards
-- ❌ 5-8 players only
-
-**NEW (Correct):**
-- ✅ Individual chamber cards
-- ✅ Key holder selects chambers
-- ✅ Direct reveal mechanic
-- ✅ 3-10 players
-- ✅ 4 rounds with decreasing cards
-- ✅ Progress tracker showing discoveries
-
-## 📜 License
+## License
 
 For private, non-commercial use only.
-
----
-
-**Enjoy exploring the Temple! May you find gold... or fall into traps! 🏛️💰🔥**

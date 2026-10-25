@@ -4,6 +4,7 @@
   "description": "Temple of Horror - Game Client",
   "private": true,
   "dependencies": {
+    "@supabase/supabase-js": "^2.118.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-scripts": "5.0.1",
